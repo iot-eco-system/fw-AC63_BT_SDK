@@ -21,19 +21,15 @@ bank_files=
 for i in $(seq 0 20)
 do
     ${OBJCOPY} -O binary -j .overlay_bank$i $1.elf bank$i.bin
-    if [ ! -s bank$i.bin ]
-    then
-        break
-    fi
-    bank_files=$bank_files"bank$i.bin 0x0 "
+    bank_files="${bank_files}bank$i.bin 0x0 "
 done
 echo $bank_files
-lz4_packet -dict text.bin -input common.bin 0 $bank_files -o bank.bin
+./lz4_packet -dict text.bin -input common.bin 0 $bank_files -o bank.bin
 
 ${OBJDUMP} -section-headers -address-mask=0x1ffffff $1.elf
 ${OBJSIZEDUMP} -lite -skip-zero -enable-dbg-info $1.elf | sort -k 1 > symbol_tbl.txt
 
-cat text.bin data.bin data_code.bin aec.bin aac.bin bank0.bin aptx.bin > app.bin
+cat text.bin data.bin data_code.bin aec.bin aac.bin bank.bin aptx.bin > app.bin
 
 rm -f bank*.bin common.bin text.bin data.bin bank.bin aac.bin aec.bin aptx.bin
 
