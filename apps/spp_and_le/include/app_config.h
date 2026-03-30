@@ -18,7 +18,7 @@
 
 #define TCFG_MEDIA_LIB_USE_MALLOC		    1
 //apps example 选择,只能选1个,要配置对应的board_config.h
-#define CONFIG_APP_SPP_LE                 1 //SPP + LE or LE's client
+#define CONFIG_APP_SPP_LE                 0 //SPP + LE or LE's client
 #define CONFIG_APP_FTMS                   0 //FTMS
 #define CONFIG_APP_FINDMY                 0 //FINDMY
 #define CONFIG_APP_MULTI                  0 //蓝牙LE多连 + spp
@@ -34,6 +34,7 @@
 #define CONFIG_APP_CONN_24G               0 //基于BLE的2.4g,板级只需要开BLE
 #define CONFIG_APP_HILINK                 0 //华为协议
 #define CONFIG_APP_ELECTROCAR             0 //电车项目,注意将板级处ADKEY以及别的IO占用失能, 关闭低功耗:TCFG_LOWPOWER_LOWPOWER_SEL设置为0
+#define CONFIG_APP_SERIALBLE              1 // UART-to-BLE bridge demo
 // #define LL_SYNC_EN                        CONFIG_APP_LL_SYNC //
 // #define TUYA_DEMO_EN                      CONFIG_APP_TUYA
 
@@ -212,6 +213,14 @@
 #define CONFIG_BT_GATT_CLIENT_NUM          0 //配置主机client个数 (支持使能1,search profile)
 #define CONFIG_BT_GATT_SERVER_NUM          1 //配置从机server个数
 #define CONFIG_BT_GATT_CONNECTION_NUM      (CONFIG_BT_GATT_SERVER_NUM + CONFIG_BT_GATT_CLIENT_NUM) //配置连接个数
+
+#elif CONFIG_APP_SERIALBLE
+/* Serial-BLE: pure BLE peripheral, one server, no client, no encryption  */
+#define CONFIG_BT_GATT_COMMON_ENABLE       1 // 配置使用gatt公共模块
+#define CONFIG_BT_SM_SUPPORT_ENABLE        0 // 配置是否支持加密
+#define CONFIG_BT_GATT_CLIENT_NUM          0 // 配置主机client个数
+#define CONFIG_BT_GATT_SERVER_NUM          1 // 配置从机server个数
+#define CONFIG_BT_GATT_CONNECTION_NUM      (CONFIG_BT_GATT_SERVER_NUM + CONFIG_BT_GATT_CLIENT_NUM)
 
 #else
 #define CONFIG_BT_GATT_COMMON_ENABLE       0

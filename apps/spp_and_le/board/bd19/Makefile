@@ -187,6 +187,7 @@ INCLUDES := \
 	-I../../../../apps/common/third_party_profile/Tecent_LL/include \
 	-I../../../../apps/common/third_party_profile/Tecent_LL/tecent_ll_demo \
 	-I../../../../apps/spp_and_le/examples/ll_sync \
+	-I../../../../apps/spp_and_le/examples/serialble \
 	-I../../../../apps/common/cJSON \
 	-I../../../../apps/common/third_party_profile/tuya_protocol \
 	-I../../../../apps/common/third_party_profile/tuya_protocol/app/demo \
@@ -401,6 +402,8 @@ c_SRC_FILES := \
 	../../../../apps/spp_and_le/examples/trans_data/ble_trans_search.c \
 	../../../../apps/spp_and_le/examples/tuya/app_tuya.c \
 	../../../../apps/spp_and_le/examples/tuya/tuya_demo.c \
+	../../../../apps/spp_and_le/examples/serialble/app_serialble.c \
+	../../../../apps/spp_and_le/examples/serialble/ble_serialble.c \
 	../../../../apps/spp_and_le/modules/bt/app_comm_ble.c \
 	../../../../apps/spp_and_le/modules/bt/app_comm_edr.c \
 	../../../../apps/spp_and_le/modules/bt/edr_emitter.c \

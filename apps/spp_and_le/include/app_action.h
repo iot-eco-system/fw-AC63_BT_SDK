@@ -17,7 +17,7 @@
 #define ACTION_ELECTROCAR       0x000e
 #define ACTION_FINDMY           0x000F
 #define ACTION_FTMS             0x0010
-
+#define ACTION_SERIALBLE_MAIN   0x0011
 
 #endif
 

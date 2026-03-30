@@ -247,4 +247,14 @@ const char log_tag_const_d_FTMS AT(.LOG_TAG_CONST) = 1;
 const char log_tag_const_w_FTMS AT(.LOG_TAG_CONST) = 1;
 const char log_tag_const_e_FTMS AT(.LOG_TAG_CONST) = 1;
 
+const char log_tag_const_v_SERIALBLE AT(.LOG_TAG_CONST) = 0;
+const char log_tag_const_i_SERIALBLE AT(.LOG_TAG_CONST) = 1;
+const char log_tag_const_d_SERIALBLE AT(.LOG_TAG_CONST) = 1;
+const char log_tag_const_w_SERIALBLE AT(.LOG_TAG_CONST) = 1;
+const char log_tag_const_e_SERIALBLE AT(.LOG_TAG_CONST) = 1;
 
+const char log_tag_const_v_SERIALBLE_APP AT(.LOG_TAG_CONST) = 0;
+const char log_tag_const_i_SERIALBLE_APP AT(.LOG_TAG_CONST) = 1;
+const char log_tag_const_d_SERIALBLE_APP AT(.LOG_TAG_CONST) = 1;
+const char log_tag_const_w_SERIALBLE_APP AT(.LOG_TAG_CONST) = 1;
+const char log_tag_const_e_SERIALBLE_APP AT(.LOG_TAG_CONST) = 1;
