@@ -214,6 +214,10 @@ void app_main()
     it.name = "ftms";
     it.action = ACTION_FTMS;
 
+#elif CONFIG_APP_SERIALBLE
+    it.name = "serialble";
+    it.action = ACTION_SERIALBLE_MAIN;
+
 #else
     while (1) {
         printf("no app!!!");

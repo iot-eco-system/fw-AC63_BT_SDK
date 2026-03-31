@@ -8,16 +8,16 @@
  *   - Exposes one custom service (UUID 0xFF00) with one characteristic
  *     (UUID 0xFF01, READ | NOTIFY).
  *   - When a BLE central connects and enables notifications, any data
- *     received on the debug UART is forwarded as a BLE notification.
+ *     received on the AT serial UART is forwarded as a BLE notification.
  *   - The READ property lets the central read the most-recently received
  *     UART frame at any time.
  *
  * Hardware note:
- *   UART receive requires TCFG_UART0_RX_PORT to be set to a valid IO pin
- *   in the board configuration file (board_xxx_demo_cfg.h).  The default
- *   board config sets it to NO_CONFIG_PORT (TX-only debug UART).
- *   Change it to the appropriate pin before using this example, e.g.:
- *     #define TCFG_UART0_RX_PORT  IO_PORTA_01
+ *   UART pins are configured via UART_DB_TX_PIN and UART_DB_RX_PIN in
+ *   the board configuration file (board_xxx_cfg.h), e.g.:
+ *     #define UART_DB_TX_PIN  IO_PORTC_02
+ *     #define UART_DB_RX_PIN  IO_PORTC_03
+ *   Baud rate is set by SERIALBLE_UART_BAUD (default 115200).
  */
 
 #include "system/app_core.h"
@@ -47,6 +47,10 @@
  * Configuration
  * ---------------------------------------------------------------------- */
 
+/* AT serial UART (UART_DB_TX_PIN / UART_DB_RX_PIN) */
+#define SERIALBLE_UART_BAUD 115200
+#define SERIALBLE_UART_BUF_SIZE 0x100
+
 /* ATT send buffer: 2 packets × (head + MTU) */
 #define SERIALBLE_MTU_SIZE (247)
 #define SERIALBLE_PACKET_NUMS (2)
@@ -71,6 +75,10 @@ static u8 serialble_adv_data[ADV_RSP_PACKET_MAX];
 static u8 serialble_rsp_data[ADV_RSP_PACKET_MAX];
 static adv_cfg_t serialble_adv_config;
 
+/* serial UART state */
+static u8 serialble_uart_dma_buf[SERIALBLE_UART_BUF_SIZE] __attribute__((aligned(4)));
+static const uart_bus_t *serialble_uart_bus = NULL;
+
 /* -------------------------------------------------------------------------
  * Forward declarations
  * ---------------------------------------------------------------------- */
@@ -81,9 +89,6 @@ static int serialble_att_write_callback(hci_con_handle_t connection_handle,
                                         uint16_t att_handle, uint16_t transaction_mode,
                                         uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
 static int serialble_event_packet_handler(int event, u8 *packet, u16 size, u8 *ext_param);
-
-/* uart_db_regiest_recieve_callback is implemented in cpu/xxx/setup.c */
-extern void uart_db_regiest_recieve_callback(void *rx_cb);
 
 /* -------------------------------------------------------------------------
  * GATT server config
@@ -170,6 +175,56 @@ static void serialble_uart_rx_to_ble(u8 *packet, u32 size)
                          ATT_CHARACTERISTIC_ff01_01_VALUE_HANDLE,
                          serialble_last_rx_buf, copy_len,
                          ATT_OP_AUTO_READ_CCC);
+}
+
+/* -------------------------------------------------------------------------
+ * serial UART open / close / rx-handler
+ * ---------------------------------------------------------------------- */
+
+static void serialble_uart_isr_cb(void *ut_bus, u32 status)
+{
+  if (status == UT_RX || status == UT_RX_OT)
+  {
+    static u8 rx_buf[SERIALBLE_LAST_RX_MAX];
+    uart_bus_t *bus = (uart_bus_t *)ut_bus;
+    u32 len = bus->read(rx_buf, SERIALBLE_LAST_RX_MAX, 0);
+    if (len > 0)
+    {
+      serialble_uart_rx_to_ble(rx_buf, len);
+    }
+  }
+}
+
+static int serialble_uart_open(void)
+{
+  struct uart_platform_data_t u_arg = {0};
+  u_arg.tx_pin = UART_DB_TX_PIN;
+  u_arg.rx_pin = UART_DB_RX_PIN;
+  u_arg.rx_cbuf = serialble_uart_dma_buf;
+  u_arg.rx_cbuf_size = SERIALBLE_UART_BUF_SIZE;
+  u_arg.frame_length = SERIALBLE_UART_BUF_SIZE;
+  u_arg.rx_timeout = 6;
+  u_arg.isr_cbfun = serialble_uart_isr_cb;
+  u_arg.baud = SERIALBLE_UART_BAUD;
+  u_arg.is_9bit = 0;
+  serialble_uart_bus = uart_dev_open(&u_arg);
+  if (serialble_uart_bus)
+  {
+    log_info("uart_dev_open() success\n");
+    return 0;
+  }
+  log_info("uart_dev_open() failed\n");
+  return -1;
+}
+
+static void serialble_uart_close(void)
+{
+  if (serialble_uart_bus)
+  {
+    uart_dev_close(serialble_uart_bus);
+    serialble_uart_bus = NULL;
+    log_info("uart_dev_close()\n");
+  }
 }
 
 /* -------------------------------------------------------------------------
@@ -277,15 +332,7 @@ static int serialble_event_packet_handler(int event, u8 *packet, u16 size, u8 *e
   case GATT_COMM_EVENT_CONNECTION_COMPLETE:
     serialble_con_handle = little_endian_read_16(packet, 0);
     log_info("connected, handle=%04x\n", serialble_con_handle);
-
-    /* Start listening to UART now that a central is connected */
-#if TCFG_UART0_RX_PORT != NO_CONFIG_PORT
-    uart_db_regiest_recieve_callback(serialble_uart_rx_to_ble);
-    log_info("uart rx callback registered\n");
-#else
-    log_info("WARNING: TCFG_UART0_RX_PORT is NO_CONFIG_PORT - UART RX not active.\n");
-    log_info("Set TCFG_UART0_RX_PORT to a valid IO pin in your board config.\n");
-#endif
+    serialble_uart_open();
     break;
 
   case GATT_COMM_EVENT_DISCONNECT_COMPLETE:
@@ -293,10 +340,7 @@ static int serialble_event_packet_handler(int event, u8 *packet, u16 size, u8 *e
              little_endian_read_16(packet, 0), packet[2]);
     if (serialble_con_handle == little_endian_read_16(packet, 0))
     {
-      /* Stop UART callback when there is no central connected */
-#if TCFG_UART0_RX_PORT != NO_CONFIG_PORT
-      uart_db_regiest_recieve_callback(NULL);
-#endif
+      serialble_uart_close();
       serialble_con_handle = 0;
     }
     break;
