@@ -3,7 +3,7 @@
  *
  * GATT profile for the "serialble" example.
  * One custom service (UUID 0xFF00) with one characteristic (UUID 0xFF01)
- * that supports READ and NOTIFY.
+ * that supports READ, WRITE and NOTIFY.
  *
  * Service layout:
  *   0x0001  PRIMARY_SERVICE   0x1800  (GAP - Device Name)
@@ -14,8 +14,8 @@
  *   0x0006  VALUE             0x2A05  INDICATE
  *   0x0007  CCCD              0x2902
  *   0x0008  PRIMARY_SERVICE   0xFF00  (Serial BLE custom service)
- *   0x0009  CHARACTERISTIC    0xFF01  READ | NOTIFY
- *   0x000A  VALUE             0xFF01  READ | NOTIFY | DYNAMIC
+ *   0x0009  CHARACTERISTIC    0xFF01  READ | WRITE | NOTIFY
+ *   0x000A  VALUE             0xFF01  READ | WRITE | NOTIFY | DYNAMIC
  *   0x000B  CCCD              0x2902
  */
 
@@ -141,8 +141,8 @@ static const uint8_t serialble_profile_data[] = {
     0x00,
     0xff,
 
-    /* CHARACTERISTIC, ff01, READ | NOTIFY */
-    // 0x0009 CHARACTERISTIC ff01 READ | NOTIFY
+    /* CHARACTERISTIC, ff01, READ | WRITE | NOTIFY */
+    // 0x0009 CHARACTERISTIC ff01 READ | WRITE | NOTIFY
     0x0d,
     0x00,
     0x02,
@@ -151,15 +151,15 @@ static const uint8_t serialble_profile_data[] = {
     0x00,
     0x03,
     0x28,
-    0x12,
+    0x1a,
     0x0a,
     0x00,
     0x01,
     0xff,
-    // 0x000a VALUE ff01 READ | NOTIFY | DYNAMIC
+    // 0x000a VALUE ff01 READ | WRITE | NOTIFY | DYNAMIC
     0x08,
     0x00,
-    0x12,
+    0x1a,
     0x01,
     0x0a,
     0x00,

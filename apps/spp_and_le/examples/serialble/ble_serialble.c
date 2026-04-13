@@ -6,7 +6,7 @@
  * Behaviour:
  *   - Advertises as a BLE peripheral.
  *   - Exposes one custom service (UUID 0xFF00) with one characteristic
- *     (UUID 0xFF01, READ | NOTIFY).
+ *     (UUID 0xFF01, READ | WRITE | NOTIFY).
  *   - When a BLE central connects and enables notifications, any data
  *     received on the AT serial UART is forwarded as a BLE notification.
  *   - The READ property lets the central read the most-recently received
@@ -32,6 +32,8 @@
 #include "gatt_common/le_gatt_common.h"
 #include "ble_serialble.h"
 #include "ble_serialble_profile.h"
+
+extern int le_controller_get_mac(void *addr);
 
 #if CONFIG_APP_SERIALBLE
 
@@ -137,6 +139,7 @@ static gatt_ctrl_t serialble_gatt_ctrl = {
  * Called from the UART IRQ context whenever a frame is received.
  * Stores the data so READ requests return fresh data, then sends a
  * BLE notification to the connected central (if notifications are enabled).
+ * Data written by central to ff01 is forwarded out through UART.
  */
 static void serialble_uart_rx_to_ble(u8 *packet, u32 size)
 {
@@ -304,8 +307,21 @@ static int serialble_att_write_callback(hci_con_handle_t connection_handle,
 {
   log_info("write_callback handle=%04x size=%d\n", att_handle, buffer_size);
 
+  if (buffer == NULL || buffer_size == 0)
+  {
+    return 0;
+  }
+
   switch (att_handle)
   {
+
+  case ATT_CHARACTERISTIC_ff01_01_VALUE_HANDLE:
+    /* Forward all BLE payload bytes to UART */
+    if (serialble_uart_bus && serialble_uart_bus->write)
+    {
+      serialble_uart_bus->write(buffer, buffer_size);
+    }
+    break;
 
   case ATT_CHARACTERISTIC_ff01_01_CLIENT_CONFIGURATION_HANDLE:
   case ATT_CHARACTERISTIC_2a05_01_CLIENT_CONFIGURATION_HANDLE:
@@ -482,6 +498,34 @@ static void serialble_adv_config_set(void)
  * Public API
  * ---------------------------------------------------------------------- */
 
+static void serialble_set_name(void)
+{
+  static const char hex_table[] = "0123456789ABCDEF";
+  u8 ble_addr_tmp[6];
+  u8 ble_addr[6];
+  u8 i;
+  char ble_name[15] = "serialble_0000";
+
+  if (le_controller_get_mac(ble_addr_tmp) != 0)
+  {
+    ble_comm_set_config_name("serialble", 0);
+    return;
+  }
+
+  /* Convert to normal MAC byte order before taking the tail. */
+  for (i = 0; i < 6; i++)
+  {
+    ble_addr[i] = ble_addr_tmp[5 - i];
+  }
+
+  ble_name[10] = hex_table[(ble_addr[4] >> 4) & 0x0F];
+  ble_name[11] = hex_table[ble_addr[4] & 0x0F];
+  ble_name[12] = hex_table[(ble_addr[5] >> 4) & 0x0F];
+  ble_name[13] = hex_table[ble_addr[5] & 0x0F];
+
+  ble_comm_set_config_name(ble_name, 0);
+}
+
 /*
  * serialble_ble_before_start_init()
  *
@@ -503,6 +547,7 @@ void serialble_server_init(void)
 {
   log_info("%s\n", __FUNCTION__);
   serialble_con_handle = 0;
+  serialble_set_name();
   ble_gatt_server_set_profile(serialble_profile_data, sizeof(serialble_profile_data));
   serialble_adv_config_set();
 }
